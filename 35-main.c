@@ -36,6 +36,9 @@
 
 
 
+#define trigger2power(BtnSet)		(vexRT[BtnSet ## U] ? 127 : (vexRT[BtnSet ## D] ? -127 : 0))
+
+
 
 
 FlywheelSpeedController leftFlywheelController;
@@ -195,8 +198,8 @@ task usercontrol()
 		else if( vexRT[Btn8R] ) targetV = 8;
 		else if( vexRT[Btn8D] ) targetV = 7.2;
 
-		motor[intakeVert] = vexRT[Btn6U] ? 127 : (vexRT[Btn6D] ? -127 : 0);
-		motor[intakeHorz] = vexRT[Btn5U] ? 127 : (vexRT[Btn5D] ? -127 : 0);
+		motor[intakeVert] = trigger2power(Btn6);//vexRT[Btn6U] ? 127 : (vexRT[Btn6D] ? -127 : 0);
+		motor[intakeHorz] = trigger2power(Btn5);//vexRT[Btn5U] ? 127 : (vexRT[Btn5D] ? -127 : 0);
 
 		// Tank drive with joystick deadzone eliminated
 		drive( livingJoy(ChLeftDrive), livingJoy(ChRightDrive) );
