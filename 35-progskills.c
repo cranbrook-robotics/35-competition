@@ -12,7 +12,7 @@
 #include <CKFlywheelSpeedController.h>
 
 
-#define TEST_SPEED_CONTROL
+//#define TEST_SPEED_CONTROL
 
 
 #define ChLeftDrive		Ch3
@@ -150,24 +150,28 @@ void pre_auton()
 
 task autonomous()
 {
-	//startTask(FlywheelSpeedControl);
-	//startTask(LCDUpdate);
+	targetV =11;
+	int time = 900;
+	startTask(FlywheelSpeedControl);
+	startTask(LCDUpdate);
+	//Start to move intake every 1.5 seconds, repeat block 4 times
+	wait1Msec(25000);
 
-	#ifdef TEST_SPEED_CONTROL
-	testWheelsWithDial();
-	#endif
+	//start move
+	//move forward
+	drive(127, 110);
+	wait1Msec(1800);
+	drive(0, 0);
 
-  // Robot Shoots 4 Balls, Have appropiate wait time here
-	drive(127, 127);
-	wait1Msec(400); //Driving up to prep for turn
+	//turn
+	drive(-127, 127);
+	wait1Msec(550);
+	drive(0,0);
 
-	drive(127, -110); // Turn right, to align with stack
-	wait1Msec(600);
-
-	drive(127, 127);// Drive forward towards stack and run intake
-	motor[intakeVert] = 127;
-	wait1Msec(1000);
-
+	//go back
+	drive(-127, -110);
+	wait1Msec(2100);
+	drive(0,0);
 }
 
 
@@ -194,9 +198,9 @@ task usercontrol()
 	while(true){
 
 		// A few preset flywheel speeds
-		     if( vexRT[Btn8U] ) targetV = 10;
+		     if( vexRT[Btn8U] ) targetV = 11;
 		else if( vexRT[Btn8R] ) targetV = 8;
-		else if( vexRT[Btn8D] ) targetV = 7.2;
+		else if( vexRT[Btn8D] ) targetV = 0;
 
 		motor[intakeVert] = trigger2power(Btn6);//vexRT[Btn6U] ? 127 : (vexRT[Btn6D] ? -127 : 0);
 		motor[intakeHorz] = trigger2power(Btn5);//vexRT[Btn5U] ? 127 : (vexRT[Btn5D] ? -127 : 0);
