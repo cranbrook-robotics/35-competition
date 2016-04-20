@@ -42,7 +42,7 @@
 
 
 FlywheelSpeedController leftFlywheelController;
-FlywheelSpeedController rightFlywheelController;
+
 
 
 
@@ -67,9 +67,9 @@ task FlywheelSpeedControl()
 {
 	while(true){
 		setTargetSpeed( leftFlywheelController, targetV );
-		setTargetSpeed( rightFlywheelController, targetV );
+
 		update( leftFlywheelController );
-		update( rightFlywheelController );
+
 
 		delay(60);
 	}
@@ -86,8 +86,8 @@ task LCDUpdate() {
 		delay(250);
 
 		speedL = getAverage( leftFlywheelController.maFlywheelSpeed );
-		speedR = getAverage( rightFlywheelController.maFlywheelSpeed );
-		vExpander = SensorValue[powerExpBattery] / 280.0;
+
+		vExpander = SensorValue[vPowerExpander] / 280.0;
 		vMain = MainBatteryVoltage();
 
 		sprintf(line0, "%.1f %.1f %.1f", targetV, speedL, speedR);
@@ -105,11 +105,12 @@ task LCDUpdate() {
 #ifdef TEST_SPEED_CONTROL
 float speedDialValue(){
 	return 10*potentiometer(speedDial); //rad/sec of motor output shaft
+	delay(150);
 }
 void testWheelsWithDial(){
 	while(true){
 		targetV = speedDialValue();
-		delay(20);
+		delay(200);
 	}
 }
 #endif
@@ -132,11 +133,11 @@ void pre_auton()
   // Autonomous and Tele-Op modes. You will need to manage all user created tasks if set to false.
   bStopTasksBetweenModes = true;
 
-	tMotor motorPortsL[] = { mFlyLF, mFlyLB, mFlyLO };
-	tMotor motorPortsR[] = { mFlyRF, mFlyRB, mFlyRO };
+	tMotor motorPortsL[] = { mFly1, mFly2, mFly3 };
+
 
 	FlywheelSpeedControllerInit( leftFlywheelController, Kq, Ki, Kd, LeftA, LeftB, motorPortsL, 3 );
-	FlywheelSpeedControllerInit( rightFlywheelController, Kq, Ki, Kd, RightA, RightB, motorPortsR, 3 );
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -150,23 +151,11 @@ void pre_auton()
 
 task autonomous()
 {
-	//startTask(FlywheelSpeedControl);
-	//startTask(LCDUpdate);
+	startTask(FlywheelSpeedControl);
 
-	#ifdef TEST_SPEED_CONTROL
-	testWheelsWithDial();
-	#endif
 
-  // Robot Shoots 4 Balls, Have appropiate wait time here
-	drive(127, 127);
-	wait1Msec(400); //Driving up to prep for turn
 
-	drive(127, -110); // Turn right, to align with stack
-	wait1Msec(600);
 
-	drive(127, 127);// Drive forward towards stack and run intake
-	motor[intakeVert] = 127;
-	wait1Msec(1000);
 
 }
 
@@ -185,22 +174,22 @@ task autonomous()
 task usercontrol()
 {
 	startTask(FlywheelSpeedControl);
-	startTask(LCDUpdate);
 
-	#ifdef TEST_SPEED_CONTROL
-	testWheelsWithDial();
-	#endif
+
 
 	while(true){
 
 		// A few preset flywheel speeds
-		     if( vexRT[Btn8U] ) targetV = 10;
-		else if( vexRT[Btn8R] ) targetV = 8;
-		else if( vexRT[Btn8D] ) targetV = 7.2;
+		  //   if( vexRT[Btn8U] ) targetV = 10;
+	//else if( vexRT[Btn8R] ) targetV = 8;
+//	else if( vexRT[Btn8D] ) targetV = 7.2;
+//targetV = 10;
+		motor[intakeUp] = trigger2power(Btn6);//vexRT[Btn6U] ? 127 : (vexRT[Btn6D] ? -127 : 0);
+		motor[intakeRoller] = trigger2power(Btn5);//vexRT[Btn5U] ? 127 : (vexRT[Btn5D] ? -127 : 0);
 
-		motor[intakeVert] = trigger2power(Btn6);//vexRT[Btn6U] ? 127 : (vexRT[Btn6D] ? -127 : 0);
-		motor[intakeHorz] = trigger2power(Btn5);//vexRT[Btn5U] ? 127 : (vexRT[Btn5D] ? -127 : 0);
-
+	#ifdef TEST_SPEED_CONTROL
+	testWheelsWithDial();
+	#endif
 		// Tank drive with joystick deadzone eliminated
 		drive( livingJoy(ChLeftDrive), livingJoy(ChRightDrive) );
 
