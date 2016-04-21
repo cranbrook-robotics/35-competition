@@ -24,7 +24,15 @@
 #define Ki	0.03
 #define Kd	0.0
 
+
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// DON'T FORGET TO CHANGE!!!!!!!!!!!!!!
 const bool iWantSpeedDial = true;
+
+
+
 
 
 //Speeds are in radians/second of the motors's output drive shaft
@@ -41,15 +49,21 @@ const float TopFlywheelSpeed = MaxFlywheelSpeed;
 
 // You can change which buttons have which function,
 // and the usercontrol code will just use these aliases.
-#define BtnFlywheelOn				Btn8U
-#define BtnFlywheelOff			Btn8D
-#define BtnFlywheelFaster		Btn8R
-#define BtnFlywheelSlower		Btn8L
-#define BtnFlywheelTopSpeed	Btn7U
-#define BtnFlywheelMidSpeed	Btn7R
-#define BtnFlywheelLowSpeed	Btn7D
+#define BtnFlywheelOn					Btn8U
+#define BtnFlywheelOff				Btn8D
+#define BtnFlywheelFaster			Btn8R
+#define BtnFlywheelSlower			Btn8L
+#define BtnFlywheelTopSpeed		Btn7U
+#define BtnFlywheelMidSpeed		Btn7R
+#define BtnFlywheelLowSpeed		Btn7D
 
+#define BtnLiftDown						Btn5DXmtr2
+#define BtnLiftUp							Btn5UXmtr2
 
+#define BtnIntakeUp						Btn6U
+#define BtnIntakeDown					Btn6D
+#define BtnIntakeRollerIn			Btn5U
+#define BtnIntakeRollerOut		Btn5D
 
 
 
@@ -70,6 +84,20 @@ void drive(int left, int right){
 int livingJoy(int ch){
 	int value = vexRT[ch];
 	return abs(value) > 12 ? value : 0;
+}
+
+
+
+float speedDialValue(){
+	// Use 16 because 16 radians/second is the nominal max speed
+	// of high speed 393's output shaft.
+	return 16*potentiometer(speedDial); //rad/sec of motor output shaft
+}
+
+
+void setLiftMotors( int power ){
+	motor[liftLeft] = power;
+	motor[liftRight] = power;
 }
 
 
@@ -120,18 +148,7 @@ task FlywheelSpeedControl()
 
 
 
-float speedDialValue(){
-	// Use 16 because 16 radians/second is the nominal max speed
-	// of high speed 393's output shaft.
-	return 16*potentiometer(speedDial); //rad/sec of motor output shaft
-}
 
-task testWheelsWithDial(){
-	while(true){
-		flywheelTargetSpeed = speedDialValue();
-		delay(200);
-	}
-}
 
 
 
@@ -186,13 +203,11 @@ task autonomous()
 //
 /////////////////////////////////////////////////////////////////////////////////////////
 
+
+
 task usercontrol()
 {
 	startTask(FlywheelSpeedControl);
-
-	if( iWantSpeedDial ){
-		startTask(testWheelsWithDial);
-	}
 
 
 	while(true){
@@ -202,53 +217,51 @@ task usercontrol()
 		//   else if( vexRT[Btn8R] ) flywheelTargetSpeed = 8;
 		//	 else if( vexRT[Btn8D] ) flywheelTargetSpeed = 7.2;
 		//flywheelTargetSpeed = 10;
-
-		motor[intakeUp] = buttonsToPower(Btn6D, Btn6U);
-		motor[intakeRoller] = buttonsToPower(Btn5D, Btn5U);
+		motor[intakeUp] = buttonsToPower(BtnIntakeDown, BtnIntakeUp);
+		motor[intakeRoller] = buttonsToPower(BtnIntakeRollerOut, BtnIntakeRollerIn);
 
 		// Tank drive with joystick deadzone eliminated
 		drive( livingJoy(ChJoyLY), livingJoy(ChJoyRY) );
 
 		// -127 if 5d is pressed on ctlr 2 and +127 if 5u pressed on ctlr 2
-		motor[mRampSomething] = buttonsToPower(Btn5DXmtr2, Btn5UXmtr2);
+		setLiftMotors( buttonsToPower(BtnLiftDown, BtnLiftUp) );
 
-		// Only use the remote control for flywheel controls if not using
-		// the speed dial
-		if( !iWantSpeedDial ){
-
-			bool turnOnFlywheel = (bool)vexRT[BtnFlywheelOn];
-			bool turnOffFlywheel = (bool)vexRT[BtnFlywheelOff];
-
-			if( turnOnFlywheel ){
-				isFlywheelOn = true;
-			} else if( turnOffFlywheel ){
-				isFlywheelOn = false;
-			}
-
-			bool flywheelFaster = (bool)vexRT[BtnFlywheelFaster];
-			bool flywheelSlower = (bool)vexRT[BtnFlywheelSlower];
-
-			// Now with these guys, we need to avoid the unintended multi-press...
-			if( flywheelFaster || flywheelSlower ){
-
-				// Either going up or down by FlywheelSpeedIncrement.
-				flywheelTargetSpeed += FlywheelSpeedIncrement * (flywheelFaster ? +1 : -1);
-
-				// Make sure it stays in our predefined bounds
-				flywheelTargetSpeed = bound( flywheelTargetSpeed, MinFlywheelSpeed, MaxFlywheelSpeed );
-
-				delay(250); // here's the multi-press avoidance
-			}
-
-
-			// Preset speeds
-			if( vexRT[BtnFlywheelLowSpeed] )
-				flywheelTargetSpeed = LowFlywheelSpeed;
-			else if( vexRT[BtnFlywheelMidSpeed] )
-				flywheelTargetSpeed = MidFlywheelSpeed;
-			else if( vexRT[BtnFlywheelTopSpeed] )
-				flywheelTargetSpeed = TopFlywheelSpeed;
+		if( iWantSpeedDial ){
+			flywheelTargetSpeed = speedDialValue();
 		}
+
+		bool turnOnFlywheel = (bool)vexRT[BtnFlywheelOn];
+		bool turnOffFlywheel = (bool)vexRT[BtnFlywheelOff];
+
+		if( turnOnFlywheel ){
+			isFlywheelOn = true;
+		} else if( turnOffFlywheel ){
+			isFlywheelOn = false;
+		}
+
+		bool flywheelFaster = (bool)vexRT[BtnFlywheelFaster];
+		bool flywheelSlower = (bool)vexRT[BtnFlywheelSlower];
+
+		// Now with these guys, we need to avoid the unintended multi-press...
+		if( flywheelFaster || flywheelSlower ){
+
+			// Either going up or down by FlywheelSpeedIncrement.
+			flywheelTargetSpeed += FlywheelSpeedIncrement * (flywheelFaster ? +1 : -1);
+
+			// Make sure it stays in our predefined bounds
+			flywheelTargetSpeed = bound( flywheelTargetSpeed, MinFlywheelSpeed, MaxFlywheelSpeed );
+
+			delay(250); // here's the multi-press avoidance
+		}
+
+
+		// Preset speeds
+		if( vexRT[BtnFlywheelLowSpeed] )
+			flywheelTargetSpeed = LowFlywheelSpeed;
+		else if( vexRT[BtnFlywheelMidSpeed] )
+			flywheelTargetSpeed = MidFlywheelSpeed;
+		else if( vexRT[BtnFlywheelTopSpeed] )
+			flywheelTargetSpeed = TopFlywheelSpeed;
 
 		delay(20);
 	}
