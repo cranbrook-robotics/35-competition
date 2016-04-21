@@ -9,30 +9,22 @@
 #pragma userControlDuration(120)
 
 #include "Vex_Competition_Includes.c"   //Main competition background code...do not modify!
+
+
 #include <CKFlywheelSpeedController.h>
 
 
-#define TEST_SPEED_CONTROL
 
-
-#define ChLeftDrive		Ch3
-#define ChRightDrive	Ch2
-
-
-//1.1159e0.1544x
-#define LeftA		1.1159
-#define LeftB		0.1544
-
-//1.1734e0.14x
-#define RightA	1.1734
-#define RightB	0.14
-
-
+// A e^(B x)
+// 1.2889 e 0.0925 x
+#define A		1.2889
+#define B		0.0925
 
 #define Kq	0.05
 #define Ki	0.03
 #define Kd	0.0
 
+const bool iWantSpeedDial = true;
 
 
 
@@ -41,7 +33,7 @@
 
 
 
-FlywheelSpeedController leftFlywheelController;
+FlywheelSpeedController flywheelController;
 
 
 
@@ -66,54 +58,52 @@ float targetV = 0;
 task FlywheelSpeedControl()
 {
 	while(true){
-		setTargetSpeed( leftFlywheelController, targetV );
+		setTargetSpeed( flywheelController, targetV );
+		update( flywheelController );
 
-		update( leftFlywheelController );
-
-
-		delay(60);
+		delay(40);
 	}
 }
 
 
 
-task LCDUpdate() {
-	string line0, line1;
-	float speedL, speedR;
-	float vExpander, vMain;
+//task LCDUpdate() {
+//	string line0, line1;
+//	float speedL, speedR;
+//	float vExpander, vMain;
 
-	while(true){
-		delay(250);
+//	while(true){
+//		delay(250);
 
-		speedL = getAverage( leftFlywheelController.maFlywheelSpeed );
+//		speedL = getAverage( leftFlywheelController.maFlywheelSpeed );
 
-		vExpander = SensorValue[vPowerExpander] / 280.0;
-		vMain = MainBatteryVoltage();
+//		vExpander = SensorValue[vPowerExpander] / 280.0;
+//		vMain = MainBatteryVoltage();
 
-		sprintf(line0, "%.1f %.1f %.1f", targetV, speedL, speedR);
-		sprintf(line1, "%.2f %.2f", vExpander, vMain);
-		clearLCDLine(0);
-		displayLCDString(0, 0, line0);
-		clearLCDLine(1);
-		displayLCDString(1, 0, line1);
-	}
-}
-
-
+//		sprintf(line0, "%.1f %.1f %.1f", targetV, speedL, speedR);
+//		sprintf(line1, "%.2f %.2f", vExpander, vMain);
+//		clearLCDLine(0);
+//		displayLCDString(0, 0, line0);
+//		clearLCDLine(1);
+//		displayLCDString(1, 0, line1);
+//	}
+//}
 
 
-#ifdef TEST_SPEED_CONTROL
+
+
+
 float speedDialValue(){
 	return 10*potentiometer(speedDial); //rad/sec of motor output shaft
-	delay(150);
 }
-void testWheelsWithDial(){
+
+task testWheelsWithDial(){
 	while(true){
 		targetV = speedDialValue();
 		delay(200);
 	}
 }
-#endif
+
 
 
 
@@ -133,10 +123,10 @@ void pre_auton()
   // Autonomous and Tele-Op modes. You will need to manage all user created tasks if set to false.
   bStopTasksBetweenModes = true;
 
-	tMotor motorPortsL[] = { mFly1, mFly2, mFly3 };
+	tMotor motorPorts[] = { mFly1, mFly2, mFly3, mFly4 };
 
 
-	FlywheelSpeedControllerInit( leftFlywheelController, Kq, Ki, Kd, LeftA, LeftB, motorPortsL, 3 );
+	FlywheelSpeedControllerInit( flywheelController, Kq, Ki, Kd, A, B, motorPorts, 4 );
 
 }
 
@@ -152,10 +142,6 @@ void pre_auton()
 task autonomous()
 {
 	startTask(FlywheelSpeedControl);
-
-
-
-
 
 }
 
@@ -175,6 +161,9 @@ task usercontrol()
 {
 	startTask(FlywheelSpeedControl);
 
+	if( iWantSpeedDial ){
+		startTask(testWithSpeedDial);
+	}
 
 
 	while(true){
@@ -186,12 +175,8 @@ task usercontrol()
 //targetV = 10;
 		motor[intakeUp] = trigger2power(Btn6);//vexRT[Btn6U] ? 127 : (vexRT[Btn6D] ? -127 : 0);
 		motor[intakeRoller] = trigger2power(Btn5);//vexRT[Btn5U] ? 127 : (vexRT[Btn5D] ? -127 : 0);
-
-	#ifdef TEST_SPEED_CONTROL
-	testWheelsWithDial();
-	#endif
 		// Tank drive with joystick deadzone eliminated
-		drive( livingJoy(ChLeftDrive), livingJoy(ChRightDrive) );
+		drive( livingJoy(ChJoyLY), livingJoy(ChJoyRY) );
 
 		delay(10);
 	}
