@@ -173,10 +173,13 @@ task usercontrol()
 	//else if( vexRT[Btn8R] ) targetV = 8;
 //	else if( vexRT[Btn8D] ) targetV = 7.2;
 //targetV = 10;
-		motor[intakeUp] = trigger2power(Btn6);//vexRT[Btn6U] ? 127 : (vexRT[Btn6D] ? -127 : 0);
-		motor[intakeRoller] = trigger2power(Btn5);//vexRT[Btn5U] ? 127 : (vexRT[Btn5D] ? -127 : 0);
+		motor[intakeUp] = buttonsToPower(Btn6D, Btn6U);
+		motor[intakeRoller] = buttonsToPower(Btn5D, Btn5U);
 		// Tank drive with joystick deadzone eliminated
 		drive( livingJoy(ChJoyLY), livingJoy(ChJoyRY) );
+
+		// -127 if 5d is pressed on ctlr 2 and +127 if 5u pressed on ctlr 2
+		motor[mRampSomething] = buttonsToPower(Btn5DXmtr2, Btn5UXmtr2);
 
 		delay(10);
 	}
