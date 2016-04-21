@@ -209,14 +209,10 @@ task usercontrol()
 {
 	startTask(FlywheelSpeedControl);
 
+	time1[T1] = 0; // timer to govern the frequency of debug output
 
 	while(true){
 
-		// A few preset flywheel speeds
-	  //   if( vexRT[Btn8U] ) flywheelTargetSpeed = 10;
-		//   else if( vexRT[Btn8R] ) flywheelTargetSpeed = 8;
-		//	 else if( vexRT[Btn8D] ) flywheelTargetSpeed = 7.2;
-		//flywheelTargetSpeed = 10;
 		motor[intakeUp] = buttonsToPower(BtnIntakeDown, BtnIntakeUp);
 		motor[intakeRoller] = buttonsToPower(BtnIntakeRollerOut, BtnIntakeRollerIn);
 
@@ -228,6 +224,10 @@ task usercontrol()
 
 		if( iWantSpeedDial ){
 			flywheelTargetSpeed = speedDialValue();
+			if( time1[T1] > 250 ){
+				writeDebugStreamLine( "Target: %.2f\tActual: %.2f", flywheelTargetSpeed, getMeasuredSpeed(flywheelController) );
+				time1[T1] = 0;
+			}
 		}
 
 		bool turnOnFlywheel = (bool)vexRT[BtnFlywheelOn];
