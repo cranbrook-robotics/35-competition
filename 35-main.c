@@ -49,13 +49,16 @@ const float TopFlywheelSpeed = MaxFlywheelSpeed;
 
 // You can change which buttons have which function,
 // and the usercontrol code will just use these aliases.
+/**********
 #define BtnFlywheelOn					Btn8U
 #define BtnFlywheelOff				Btn8D
 #define BtnFlywheelFaster			Btn8R
 #define BtnFlywheelSlower			Btn8L
-#define BtnFlywheelTopSpeed		Btn7U
-#define BtnFlywheelMidSpeed		Btn7R
-#define BtnFlywheelLowSpeed		Btn7D
+**********/
+#define BtnFlywheelTopSpeed		Btn8U
+#define BtnFlywheelMidSpeed		Btn8L
+#define BtnFlywheelLowSpeed		Btn8R
+#define BtnFlywheelOff				Btn8D
 
 #define BtnLiftDown						Btn5DXmtr2
 #define BtnLiftUp							Btn5UXmtr2
@@ -68,7 +71,7 @@ const float TopFlywheelSpeed = MaxFlywheelSpeed;
 
 
 FlywheelSpeedController flywheelController;
-bool isFlywheelOn = false;
+bool isFlywheelOn = true;//false;
 float flywheelTargetSpeed = 0;
 
 
@@ -230,6 +233,7 @@ task usercontrol()
 			}
 		}
 
+		/********************
 		bool turnOnFlywheel = (bool)vexRT[BtnFlywheelOn];
 		bool turnOffFlywheel = (bool)vexRT[BtnFlywheelOff];
 
@@ -253,7 +257,7 @@ task usercontrol()
 
 			delay(250); // here's the multi-press avoidance
 		}
-
+		********************/
 
 		// Preset speeds
 		if( vexRT[BtnFlywheelLowSpeed] )
@@ -262,6 +266,8 @@ task usercontrol()
 			flywheelTargetSpeed = MidFlywheelSpeed;
 		else if( vexRT[BtnFlywheelTopSpeed] )
 			flywheelTargetSpeed = TopFlywheelSpeed;
+		else if( vexRT[BtnFlywheelOff] )
+			flywheelTargetSpeed = 0;
 
 		delay(20);
 	}
