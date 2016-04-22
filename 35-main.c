@@ -182,6 +182,8 @@ void pre_auton()
 
 	// Standard internal gearbox (aka torque) is the default, so you don't need to pass that
 	// in if you're using standard.
+	FlywheelSpeedControllerInit( leftFly, 1.288, 0.092, LFlyPorts, MotorsPerFlywheel );
+	FlywheelSpeedControllerInit( rightFly, 1.288, 0.092, RFlyPorts, MotorsPerFlywheel );
 
 	// Got the IMEs attached to the upper motor of each flywheel.
 	setMotorPortOfIME( leftFly, mFlyL3 );
