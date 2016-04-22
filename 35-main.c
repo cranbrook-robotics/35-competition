@@ -14,66 +14,65 @@
 #include <CKFlywheelSpeedController.h>
 
 
-
-// A e^(B x)
-// 1.2889 e 0.0925 x
-#define A		1.2889
-#define B		0.0925
-
-#define Kq	0.05
-#define Ki	0.03
-#define Kd	0.0
+#define IWantInrementalControls		0 // 1: yes, 0: no
 
 
-// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // DON'T FORGET TO CHANGE!!!!!!!!!!!!!!
-const bool iWantSpeedDial = true;
+const bool iWantSpeedDial = false;
 
 
 
 
 
 //Speeds are in radians/second of the motors's output drive shaft
-const float MaxFlywheelSpeed = 16; // this should be a good max for high speed 393s
-const float MinFlywheelSpeed = 8; // you can adjust this
-const float FlywheelSpeedIncrement = 0.5; // each time you press the speed up/down buttons
+
+const float MaxFlywheelSpeed = 7.9; // this should be a good max for high speed 393s
+const float MinFlywheelSpeed = 5.8; // you can adjust this
+
+#if( IWantInrementalControls )
+	const float FlywheelSpeedIncrement = 0.5; // each time you press the speed up/down buttons
+#endif
 
 // Best speeds you find via guess-n-check for close, mid, and far field shots
-const float LowFlywheelSpeed = 9;
-const float MidFlywheelSpeed = 12;
+const float LowFlywheelSpeed = 5.6;
+const float MidFlywheelSpeed = 7.9;
 const float TopFlywheelSpeed = MaxFlywheelSpeed;
 
 
 
 // You can change which buttons have which function,
 // and the usercontrol code will just use these aliases.
-/**********
-#define BtnFlywheelOn					Btn8U
-#define BtnFlywheelOff				Btn8D
-#define BtnFlywheelFaster			Btn8R
-#define BtnFlywheelSlower			Btn8L
-**********/
+
 #define BtnFlywheelTopSpeed		Btn8U
 #define BtnFlywheelMidSpeed		Btn8L
 #define BtnFlywheelLowSpeed		Btn8R
 #define BtnFlywheelOff				Btn8D
 
+#if( IWantInrementalControls )
+	#define BtnFlywheelOn					Btn7U
+	#define BtnFlywheelOff				Btn7D
+	#define BtnFlywheelFaster			Btn7R
+	#define BtnFlywheelSlower			Btn7L
+#endif
+
+
 #define BtnLiftDown						Btn5DXmtr2
 #define BtnLiftUp							Btn5UXmtr2
 
-#define BtnIntakeUp						Btn6U
-#define BtnIntakeDown					Btn6D
+#define BtnIntakeChainUp			Btn6U
+#define BtnIntakeChainDown		Btn6D
 #define BtnIntakeRollerIn			Btn5U
 #define BtnIntakeRollerOut		Btn5D
 
 
 
-FlywheelSpeedController flywheelController;
-bool isFlywheelOn = true;//false;
+FlywheelSpeedController leftFly, rightFly;
+bool isFlywheelOn = false;
 float flywheelTargetSpeed = 0;
 
+
+///////////////////////////////////////////////////////////
 
 
 void drive(int left, int right){
@@ -86,7 +85,7 @@ void drive(int left, int right){
 // only give something if not in the "dead" zone
 int livingJoy(int ch){
 	int value = vexRT[ch];
-	return abs(value) > 12 ? value : 0;
+	return absolute(value) > 12 ? value : 0;
 }
 
 
@@ -94,14 +93,15 @@ int livingJoy(int ch){
 float speedDialValue(){
 	// Use 16 because 16 radians/second is the nominal max speed
 	// of high speed 393's output shaft.
-	return 16*potentiometer(speedDial); //rad/sec of motor output shaft
+	// 11 for standard (toruqe)
+	return 11*potentiometer(speedDial); //rad/sec of motor output shaft
 }
 
 
-void setLiftMotors( int power ){
-	motor[liftLeft] = power;
-	motor[liftRight] = power;
-}
+// void setLiftMotors( int power ){
+// 	motor[liftLeft] = power;
+// 	motor[liftRight] = power;
+// }
 
 
 
@@ -114,10 +114,13 @@ task FlywheelSpeedControl()
 		// target speed was. When you turn it back on, it will go right back to
 		// that same target speed because flywheelTargetSpeed is not modified
 		// by turning on/off the flywheel.
-		setTargetSpeed( flywheelController, isFlywheelOn ? flywheelTargetSpeed : 0 );
+		float speedToUse = isFlywheelOn ? flywheelTargetSpeed : 0;
+		setTargetSpeed( leftFly, speedToUse );
+		setTargetSpeed( rightFly, speedToUse );
 
 		// Recalculate the motor given to the flywheel motors.
-		update( flywheelController );
+		update( leftFly );
+		update( rightFly );
 
 		delay(40);
 	}
@@ -168,15 +171,25 @@ task FlywheelSpeedControl()
 
 void pre_auton()
 {
-  // Set bStopTasksBetweenModes to false if you want to keep user created tasks running between
-  // Autonomous and Tele-Op modes. You will need to manage all user created tasks if set to false.
-  bStopTasksBetweenModes = true;
+	// Set bStopTasksBetweenModes to false if you want to keep user created tasks running between
+	// Autonomous and Tele-Op modes. You will need to manage all user created tasks if set to false.
+	bStopTasksBetweenModes = true;
 
-	tMotor motorPorts[] = { mFly1, mFly2, mFly3, mFly4 };
+	// 1: front, 2: back, 3: above (with IME)
+	const int MotorsPerFlywheel = 3;
+	tMotor LFlyPorts[MotorsPerFlywheel] = { mFlyL1, mFlyL2, mFlyL3 };
+	tMotor RFlyPorts[MotorsPerFlywheel] = { mFlyR1, mFlyR2, mFlyR3 };
 
+	// Standard internal gearbox (aka torque) is the default, so you don't need to pass that
+	// in if you're using standard.
 
-	FlywheelSpeedControllerInit( flywheelController, Kq, Ki, Kd, A, B, motorPorts, 4 );
+	// Got the IMEs attached to the upper motor of each flywheel.
+	setMotorPortOfIME( leftFly, mFlyL3 );
+	setMotorPortOfIME( rightFly, mFlyR3 );
 
+	// You probably want the left & right gains to be the same
+	leftFly.Kq = rightFly.Kq = 0.05;
+	leftFly.Ki = rightFly.Ki = 0.01; // keep this small for now
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -191,8 +204,18 @@ void pre_auton()
 task autonomous()
 {
 	startTask(FlywheelSpeedControl);
+	while(1)
+	{
+		flywheelTargetSpeed = MidFlywheelSpeed;
+		wait1Msec(2000);
+		motor[intakeUp] = 127;
+		motor[intakeRoller] = 127;
 
+
+	}
 }
+
+
 
 
 
@@ -216,24 +239,26 @@ task usercontrol()
 
 	while(true){
 
-		motor[intakeUp] = buttonsToPower(BtnIntakeDown, BtnIntakeUp);
+		motor[intakeUp] = buttonsToPower(BtnIntakeChainDown, BtnIntakeChainUp);
 		motor[intakeRoller] = buttonsToPower(BtnIntakeRollerOut, BtnIntakeRollerIn);
 
 		// Tank drive with joystick deadzone eliminated
 		drive( livingJoy(ChJoyLY), livingJoy(ChJoyRY) );
 
 		// -127 if 5d is pressed on ctlr 2 and +127 if 5u pressed on ctlr 2
-		setLiftMotors( buttonsToPower(BtnLiftDown, BtnLiftUp) );
+		// setLiftMotors( buttonsToPower(BtnLiftDown, BtnLiftUp) );
 
 		if( iWantSpeedDial ){
 			flywheelTargetSpeed = speedDialValue();
 			if( time1[T1] > 250 ){
-				writeDebugStreamLine( "Target: %.2f\tActual: %.2f", flywheelTargetSpeed, getMeasuredSpeed(flywheelController) );
+				writeDebugStreamLine( "Target: %.2f \tL: %.2f \tR: %.2f",
+						flywheelTargetSpeed, getMeasuredSpeed(leftFly), getMeasuredSpeed(rightFly)
+				);
 				time1[T1] = 0;
 			}
 		}
 
-		/********************
+#if( IWantInrementalControls )
 		bool turnOnFlywheel = (bool)vexRT[BtnFlywheelOn];
 		bool turnOffFlywheel = (bool)vexRT[BtnFlywheelOff];
 
@@ -257,7 +282,7 @@ task usercontrol()
 
 			delay(250); // here's the multi-press avoidance
 		}
-		********************/
+#endif
 
 		// Preset speeds
 		if( vexRT[BtnFlywheelLowSpeed] )
