@@ -15,6 +15,7 @@
 
 
 #define IWantInrementalControls		0 // 1: yes, 0: no
+#define IWantSpeedControl					0
 
 
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -27,17 +28,17 @@ const bool iWantSpeedDial = false;
 
 //Speeds are in radians/second of the motors's output drive shaft
 
-const float MaxFlywheelSpeed = 7.9; // this should be a good max for high speed 393s
-const float MinFlywheelSpeed = 5.8; // you can adjust this
+const float MaxFlywheelSpeed = 11; // this should be a good max for high speed 393s
+const float MinFlywheelSpeed = 5; // you can adjust this
 
 #if( IWantInrementalControls )
 	const float FlywheelSpeedIncrement = 0.5; // each time you press the speed up/down buttons
 #endif
 
 // Best speeds you find via guess-n-check for close, mid, and far field shots
-const float LowFlywheelSpeed = 5.6;
-const float MidFlywheelSpeed = 7.9;
-const float TopFlywheelSpeed = MaxFlywheelSpeed;
+const float LowFlywheelSpeed = 8;
+const float MidFlywheelSpeed = 8;
+const float TopFlywheelSpeed = 11;
 
 
 
@@ -47,7 +48,7 @@ const float TopFlywheelSpeed = MaxFlywheelSpeed;
 #define BtnFlywheelTopSpeed		Btn8U
 #define BtnFlywheelMidSpeed		Btn8L
 #define BtnFlywheelLowSpeed		Btn8R
-#define BtnFlywheelOff				Btn8D
+#define BtnFlywheelZeroSpeed	Btn8D
 
 #if( IWantInrementalControls )
 	#define BtnFlywheelOn					Btn7U
@@ -63,12 +64,13 @@ const float TopFlywheelSpeed = MaxFlywheelSpeed;
 #define BtnIntakeChainUp			Btn6U
 #define BtnIntakeChainDown		Btn6D
 #define BtnIntakeRollerIn			Btn5U
+
 #define BtnIntakeRollerOut		Btn5D
 
 
 
 FlywheelSpeedController leftFly, rightFly;
-bool isFlywheelOn = false;
+bool isFlywheelOn = true;
 float flywheelTargetSpeed = 0;
 
 
@@ -182,8 +184,12 @@ void pre_auton()
 
 	// Standard internal gearbox (aka torque) is the default, so you don't need to pass that
 	// in if you're using standard.
-	FlywheelSpeedControllerInit( leftFly, 1.288, 0.092, LFlyPorts, MotorsPerFlywheel );
-	FlywheelSpeedControllerInit( rightFly, 1.288, 0.092, RFlyPorts, MotorsPerFlywheel );
+	FlywheelSpeedControllerInit( leftFly, 1.5145, 0.1281, LFlyPorts, MotorsPerFlywheel ); //1.5145 e 0.1281 x
+	FlywheelSpeedControllerInit( rightFly, 0.6486, 0.1998, RFlyPorts, MotorsPerFlywheel ); //0.6486 e 0.1998 x
+
+	// left wheel has 2 on power expander; right all brain power.
+	setFlywheelBatteryConfig( leftFly, NoPort, 1 );//pexp v not working.... just brain now
+	setFlywheelBatteryConfig( rightFly, NoPort, 1 );
 
 	// Got the IMEs attached to the upper motor of each flywheel.
 	setMotorPortOfIME( leftFly, mFlyL3 );
@@ -208,7 +214,9 @@ task autonomous()
 	startTask(FlywheelSpeedControl);
 	while(1)
 	{
-		flywheelTargetSpeed = MidFlywheelSpeed;
+		flywheelTargetSpeed = 10;
+		//setPower(leftFly, 1);
+		//setPower(rightFly, 1);
 		wait1Msec(2000);
 		motor[intakeUp] = 127;
 		motor[intakeRoller] = 127;
@@ -238,6 +246,8 @@ task usercontrol()
 	startTask(FlywheelSpeedControl);
 
 	time1[T1] = 0; // timer to govern the frequency of debug output
+
+	float s = 0;
 
 	while(true){
 
@@ -282,19 +292,30 @@ task usercontrol()
 			// Make sure it stays in our predefined bounds
 			flywheelTargetSpeed = bound( flywheelTargetSpeed, MinFlywheelSpeed, MaxFlywheelSpeed );
 
+			s += 0.05 * (flywheelFaster ? +1 : -1);
+			s = bound( s, 0, 1 );
+
 			delay(250); // here's the multi-press avoidance
 		}
 #endif
 
+
 		// Preset speeds
 		if( vexRT[BtnFlywheelLowSpeed] )
 			flywheelTargetSpeed = LowFlywheelSpeed;
+			//s = 1;
 		else if( vexRT[BtnFlywheelMidSpeed] )
 			flywheelTargetSpeed = MidFlywheelSpeed;
+			//s = 0.85;
 		else if( vexRT[BtnFlywheelTopSpeed] )
 			flywheelTargetSpeed = TopFlywheelSpeed;
-		else if( vexRT[BtnFlywheelOff] )
+			//s = 0.7;
+		else if( vexRT[BtnFlywheelZeroSpeed] )
 			flywheelTargetSpeed = 0;
+		//	s = 0;
+
+		//setPower(leftFly, isFlywheelOn ? s : 0);
+		//setPower(rightFly, isFlywheelOn ? s : 0);
 
 		delay(20);
 	}
